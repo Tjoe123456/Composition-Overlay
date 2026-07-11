@@ -1,0 +1,828 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Composition Overlay</title>
+<style>
+  :root {
+    --bg: #141414;
+    --bg-elev: #1c1c1c;
+    --bg-elev-2: #242424;
+    --border: #333333;
+    --text: #ededed;
+    --text-dim: #949494;
+    --accent: #d4a244;
+    --accent-text: #1c1600;
+    --radius: 8px;
+    --gap: 16px;
+    --sidebar-w: 288px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.4;
+  }
+
+  .app {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ---------- Sidebar ---------- */
+
+  .sidebar {
+    width: var(--sidebar-w);
+    flex-shrink: 0;
+    background: var(--bg-elev);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .sidebar-section {
+    padding: var(--gap);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar-section:last-child {
+    border-bottom: none;
+    margin-top: auto;
+  }
+
+  .section-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin: 0 0 12px;
+  }
+
+  .upload-btn {
+    width: 100%;
+    padding: 12px;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color 180ms ease-out, color 180ms ease-out;
+  }
+
+  .upload-btn:hover {
+    border-color: var(--accent);
+    color: var(--text);
+  }
+
+  .overlay-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .overlay-item {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: border-color 180ms ease-out;
+  }
+
+  .overlay-item.active {
+    border-color: var(--accent);
+  }
+
+  .overlay-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    background: var(--bg-elev-2);
+    border: none;
+    color: var(--text);
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+    transition: background 180ms ease-out;
+  }
+
+  .overlay-toggle:hover {
+    background: #2c2c2c;
+  }
+
+  .overlay-item.active .overlay-toggle {
+    background: rgba(212, 162, 68, 0.14);
+    color: var(--accent);
+  }
+
+  .overlay-toggle svg {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    color: inherit;
+  }
+
+  .overlay-toggle span {
+    flex: 1;
+  }
+
+  .overlay-mirrors {
+    display: flex;
+    gap: 4px;
+    padding: 8px 12px 12px;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-height 180ms ease-out, opacity 180ms ease-out, padding 180ms ease-out;
+  }
+
+  .overlay-item.active .overlay-mirrors {
+    max-height: 48px;
+    opacity: 1;
+  }
+
+  .mirror-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 12px;
+    cursor: pointer;
+    transition: border-color 180ms ease-out, color 180ms ease-out;
+  }
+
+  .mirror-btn:hover {
+    color: var(--text);
+  }
+
+  .mirror-btn.on {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .mirror-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .control-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+
+  .control-label {
+    color: var(--text-dim);
+    font-size: 12px;
+  }
+
+  .control-value {
+    color: var(--text);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  input[type="range"] {
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border);
+    appearance: none;
+    -webkit-appearance: none;
+    margin: 8px 0 16px;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border: none;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+  }
+
+  .segmented {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .segmented button {
+    flex: 1;
+    padding: 8px;
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 180ms ease-out, color 180ms ease-out;
+  }
+
+  .segmented button + button {
+    border-left: 1px solid var(--border);
+  }
+
+  .segmented button.on {
+    background: var(--accent);
+    color: var(--accent-text);
+  }
+
+  .export-btn {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: var(--radius);
+    background: var(--accent);
+    color: var(--accent-text);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: filter 180ms ease-out, opacity 180ms ease-out;
+  }
+
+  .export-btn:hover {
+    filter: brightness(1.08);
+  }
+
+  .export-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    filter: none;
+  }
+
+  .sidebar-toggle {
+    display: none;
+  }
+
+  /* ---------- Canvas area ---------- */
+
+  .canvas-area {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .canvas-area.drag-over::after {
+    content: "";
+    position: absolute;
+    inset: 16px;
+    border: 2px dashed var(--accent);
+    border-radius: var(--radius);
+    pointer-events: none;
+  }
+
+  .empty-state {
+    text-align: center;
+    color: var(--text-dim);
+    cursor: pointer;
+    padding: 48px;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    transition: border-color 180ms ease-out;
+  }
+
+  .empty-state:hover {
+    border-color: var(--accent);
+  }
+
+  .empty-state svg {
+    width: 32px;
+    height: 32px;
+    margin-bottom: 12px;
+    color: var(--text-dim);
+  }
+
+  .empty-state p {
+    margin: 0;
+    font-size: 13px;
+  }
+
+  .stage {
+    position: relative;
+  }
+
+  .stage canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: block;
+  }
+
+  #imageCanvas {
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+  }
+
+  /* ---------- Responsive ---------- */
+
+  @media (max-width: 768px) {
+    .app {
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    .sidebar {
+      width: 100%;
+      max-height: 44px;
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+      overflow: hidden;
+      transition: max-height 200ms ease-out;
+      flex-shrink: 0;
+    }
+
+    .sidebar.expanded {
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+
+    .sidebar-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 12px 16px;
+      border: none;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-elev);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .sidebar-toggle svg {
+      width: 16px;
+      height: 16px;
+      color: var(--text-dim);
+      transition: transform 180ms ease-out;
+    }
+
+    .sidebar.expanded .sidebar-toggle svg {
+      transform: rotate(180deg);
+    }
+
+    .canvas-area {
+      flex: 1;
+      padding: 16px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <button class="sidebar-toggle" id="sidebarToggle" type="button">
+      Einstellungen
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+    </button>
+
+    <div class="sidebar-section">
+      <p class="section-title">Bild</p>
+      <button class="upload-btn" id="uploadBtn" type="button">Bild laden oder hierher ziehen</button>
+      <input type="file" id="fileInput" accept="image/*" hidden>
+    </div>
+
+    <div class="sidebar-section">
+      <p class="section-title">Overlays</p>
+      <div class="overlay-list" id="overlayList"></div>
+    </div>
+
+    <div class="sidebar-section">
+      <p class="section-title">Darstellung</p>
+      <div class="control-row">
+        <span class="control-label">Deckkraft</span>
+        <span class="control-value" id="opacityValue">80%</span>
+      </div>
+      <input type="range" id="opacitySlider" min="10" max="100" value="80">
+
+      <p class="control-label" style="margin-bottom:8px;">Linienfarbe</p>
+      <div class="segmented" id="colorSegmented">
+        <button type="button" data-color="light" class="on">Hell</button>
+        <button type="button" data-color="dark">Dunkel</button>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <button class="export-btn" id="exportBtn" type="button" disabled>Als PNG exportieren</button>
+    </div>
+  </aside>
+
+  <main class="canvas-area" id="canvasArea">
+    <div class="empty-state" id="emptyState">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+      <p>Bild laden oder hierher ziehen</p>
+    </div>
+    <div class="stage" id="stage" style="display:none;">
+      <canvas id="imageCanvas"></canvas>
+      <canvas id="overlayCanvas"></canvas>
+    </div>
+  </main>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const OVERLAYS = [
+    {
+      id: "thirds",
+      label: "Rule of Thirds",
+      icon: '<rect x="3" y="3" width="18" height="18" rx="1"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/>',
+      draw: drawGrid(1 / 3, 2 / 3)
+    },
+    {
+      id: "golden",
+      label: "Golden Ratio",
+      icon: '<rect x="3" y="3" width="18" height="18" rx="1"/><line x1="16.4" y1="3" x2="16.4" y2="21"/><line x1="3" y1="16.4" x2="21" y2="16.4"/>',
+      draw: drawGrid(1 / 2.618, 1 / 1.618)
+    },
+    {
+      id: "spiral",
+      label: "Golden Spiral",
+      icon: '<rect x="3" y="3" width="18" height="18" rx="1"/><path d="M20 4 C20 14 12 20 5 17 C0 15 1 8 6 7 C10 6 12 10 9.5 12" />',
+      draw: drawSpiral
+    },
+    {
+      id: "triangle",
+      label: "Golden Triangle",
+      icon: '<rect x="3" y="3" width="18" height="18" rx="1"/><line x1="3" y1="3" x2="21" y2="21"/><line x1="21" y1="3" x2="10.3" y2="13.7"/><line x1="3" y1="21" x2="13.7" y2="10.3"/>',
+      draw: drawTriangle
+    },
+    {
+      id: "diagonals",
+      label: "Diagonalen",
+      icon: '<rect x="3" y="3" width="18" height="18" rx="1"/><line x1="3" y1="3" x2="21" y2="21"/><line x1="21" y1="3" x2="3" y2="21"/>',
+      draw: drawDiagonals
+    },
+    {
+      id: "center",
+      label: "Center-Punkt",
+      icon: '<rect x="3" y="3" width="18" height="18" rx="1"/><line x1="12" y1="7" x2="12" y2="10"/><line x1="12" y1="14" x2="12" y2="17"/><line x1="7" y1="12" x2="10" y2="12"/><line x1="14" y1="12" x2="17" y2="12"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/>',
+      draw: drawCenter
+    }
+  ];
+
+  const state = {
+    image: null,
+    overlays: Object.fromEntries(OVERLAYS.map(o => [o.id, { active: false, mirrorH: false, mirrorV: false }])),
+    opacity: 80,
+    lineColor: "light"
+  };
+
+  const sidebar = document.getElementById("sidebar");
+  const sidebarToggle = document.getElementById("sidebarToggle");
+  const uploadBtn = document.getElementById("uploadBtn");
+  const fileInput = document.getElementById("fileInput");
+  const canvasArea = document.getElementById("canvasArea");
+  const emptyState = document.getElementById("emptyState");
+  const stage = document.getElementById("stage");
+  const imageCanvas = document.getElementById("imageCanvas");
+  const overlayCanvas = document.getElementById("overlayCanvas");
+  const overlayList = document.getElementById("overlayList");
+  const opacitySlider = document.getElementById("opacitySlider");
+  const opacityValue = document.getElementById("opacityValue");
+  const colorSegmented = document.getElementById("colorSegmented");
+  const exportBtn = document.getElementById("exportBtn");
+
+  const imgCtx = imageCanvas.getContext("2d");
+  const overlayCtx = overlayCanvas.getContext("2d");
+
+  /* ---------- Overlay drawing (coordinate space: 0..w, 0..h) ---------- */
+
+  function lineWidthFor(w, h) {
+    return Math.max(1, Math.min(w, h) / 500);
+  }
+
+  function drawGrid(a, b) {
+    return (ctx, w, h) => {
+      ctx.lineWidth = lineWidthFor(w, h);
+      ctx.beginPath();
+      [a, b].forEach(f => {
+        ctx.moveTo(w * f, 0);
+        ctx.lineTo(w * f, h);
+      });
+      [a, b].forEach(f => {
+        ctx.moveTo(0, h * f);
+        ctx.lineTo(w, h * f);
+      });
+      ctx.stroke();
+    };
+  }
+
+  function drawDiagonals(ctx, w, h) {
+    ctx.lineWidth = lineWidthFor(w, h);
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(w, h);
+    ctx.moveTo(w, 0);
+    ctx.lineTo(0, h);
+    ctx.stroke();
+  }
+
+  function drawCenter(ctx, w, h) {
+    const cx = w / 2, cy = h / 2;
+    const r = Math.min(w, h) * 0.02;
+    const tick = Math.min(w, h) * 0.035;
+    ctx.lineWidth = lineWidthFor(w, h);
+    ctx.beginPath();
+    ctx.moveTo(cx - tick - r, cy);
+    ctx.lineTo(cx - r, cy);
+    ctx.moveTo(cx + r, cy);
+    ctx.lineTo(cx + tick + r, cy);
+    ctx.moveTo(cx, cy - tick - r);
+    ctx.lineTo(cx, cy - r);
+    ctx.moveTo(cx, cy + r);
+    ctx.lineTo(cx, cy + tick + r);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  function drawTriangle(ctx, w, h) {
+    ctx.lineWidth = lineWidthFor(w, h);
+    const ax = 0, ay = 0, bx = w, by = h;
+    const dx = bx - ax, dy = by - ay;
+    const dd = dx * dx + dy * dy;
+
+    function foot(px, py) {
+      const t = ((px - ax) * dx + (py - ay) * dy) / dd;
+      return [ax + t * dx, ay + t * dy];
+    }
+
+    const f1 = foot(w, 0);
+    const f2 = foot(0, h);
+
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(bx, by);
+    ctx.moveTo(w, 0);
+    ctx.lineTo(f1[0], f1[1]);
+    ctx.moveTo(0, h);
+    ctx.lineTo(f2[0], f2[1]);
+    ctx.stroke();
+  }
+
+  function drawSpiral(ctx, w, h) {
+    // Each step cuts the largest square off the current rect and draws a
+    // quarter-arc inside it, then re-bases the coordinate system onto the
+    // remaining rect via translate+scale(-1). This keeps every arc's local
+    // start point at the local origin, so the path stays continuous without
+    // manual corner bookkeeping, and it works for any aspect ratio (portrait,
+    // landscape, square) since the cut axis is chosen fresh each step.
+    ctx.lineWidth = lineWidthFor(w, h);
+    ctx.save();
+    ctx.beginPath();
+
+    let cw = w, ch = h;
+    const steps = 8;
+    const minSize = Math.min(w, h) * 0.02;
+
+    for (let i = 0; i < steps; i++) {
+      if (Math.min(cw, ch) < minSize) break;
+      const s = Math.min(cw, ch);
+
+      if (cw >= ch) {
+        ctx.arc(0, ch, s, -Math.PI / 2, 0, false);
+        ctx.translate(s, ch);
+        ctx.scale(1, -1);
+        cw -= s;
+      } else {
+        ctx.arc(cw, 0, s, Math.PI, Math.PI / 2, true);
+        ctx.translate(s, s);
+        ctx.scale(-1, 1);
+        ch -= s;
+      }
+    }
+
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /* ---------- Layout & rendering ---------- */
+
+  let displayW = 0, displayH = 0;
+
+  function computeLayout() {
+    if (!state.image) return;
+    const areaW = canvasArea.clientWidth - 64;
+    const areaH = canvasArea.clientHeight - 64;
+    const imgRatio = state.image.naturalWidth / state.image.naturalHeight;
+    const areaRatio = areaW / areaH;
+
+    if (imgRatio > areaRatio) {
+      displayW = areaW;
+      displayH = areaW / imgRatio;
+    } else {
+      displayH = areaH;
+      displayW = areaH * imgRatio;
+    }
+
+    stage.style.width = displayW + "px";
+    stage.style.height = displayH + "px";
+
+    setupCanvas(imageCanvas, imgCtx, displayW, displayH);
+    setupCanvas(overlayCanvas, overlayCtx, displayW, displayH);
+
+    imgCtx.drawImage(state.image, 0, 0, displayW, displayH);
+    renderOverlays();
+  }
+
+  function setupCanvas(canvas, ctx, w, h) {
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width = w + "px";
+    canvas.style.height = h + "px";
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function renderOverlays() {
+    if (!state.image) return;
+    overlayCtx.clearRect(0, 0, displayW, displayH);
+    paintOverlays(overlayCtx, displayW, displayH);
+  }
+
+  function paintOverlays(ctx, w, h) {
+    ctx.save();
+    ctx.globalAlpha = state.opacity / 100;
+    ctx.strokeStyle = state.lineColor === "light" ? "#ffffff" : "#111111";
+    ctx.lineCap = "round";
+
+    OVERLAYS.forEach(o => {
+      const s = state.overlays[o.id];
+      if (!s.active) return;
+      ctx.save();
+      if (s.mirrorH) { ctx.translate(w, 0); ctx.scale(-1, 1); }
+      if (s.mirrorV) { ctx.translate(0, h); ctx.scale(1, -1); }
+      o.draw(ctx, w, h);
+      ctx.restore();
+    });
+
+    ctx.restore();
+  }
+
+  /* ---------- Image loading ---------- */
+
+  function loadFile(file) {
+    if (!file || !file.type.startsWith("image/")) return;
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      state.image = img;
+      emptyState.style.display = "none";
+      stage.style.display = "block";
+      exportBtn.disabled = false;
+      computeLayout();
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  }
+
+  uploadBtn.addEventListener("click", () => fileInput.click());
+  emptyState.addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", e => loadFile(e.target.files[0]));
+
+  ["dragenter", "dragover"].forEach(evt =>
+    canvasArea.addEventListener(evt, e => {
+      e.preventDefault();
+      canvasArea.classList.add("drag-over");
+    })
+  );
+  ["dragleave", "drop"].forEach(evt =>
+    canvasArea.addEventListener(evt, e => {
+      e.preventDefault();
+      canvasArea.classList.remove("drag-over");
+    })
+  );
+  canvasArea.addEventListener("drop", e => {
+    const file = e.dataTransfer.files[0];
+    loadFile(file);
+  });
+
+  new ResizeObserver(() => computeLayout()).observe(canvasArea);
+
+  /* ---------- Sidebar controls ---------- */
+
+  function iconSvg(inner) {
+    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+  }
+
+  const flipHIcon = iconSvg('<path d="M12 3v18M7 8l-3 4 3 4M17 8l3 4-3 4"/>');
+  const flipVIcon = iconSvg('<path d="M3 12h18M8 7l4-3 4 3M8 17l4 3 4-3"/>');
+
+  OVERLAYS.forEach(o => {
+    const item = document.createElement("div");
+    item.className = "overlay-item";
+    item.innerHTML = `
+      <button class="overlay-toggle" type="button" data-id="${o.id}">
+        ${iconSvg(o.icon)}
+        <span>${o.label}</span>
+      </button>
+      <div class="overlay-mirrors">
+        <button class="mirror-btn" data-id="${o.id}" data-axis="H" type="button">${flipHIcon} Horizontal</button>
+        <button class="mirror-btn" data-id="${o.id}" data-axis="V" type="button">${flipVIcon} Vertikal</button>
+      </div>
+    `;
+    overlayList.appendChild(item);
+
+    item.querySelector(".overlay-toggle").addEventListener("click", () => {
+      const s = state.overlays[o.id];
+      s.active = !s.active;
+      item.classList.toggle("active", s.active);
+      renderOverlays();
+    });
+
+    item.querySelectorAll(".mirror-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const s = state.overlays[o.id];
+        const key = btn.dataset.axis === "H" ? "mirrorH" : "mirrorV";
+        s[key] = !s[key];
+        btn.classList.toggle("on", s[key]);
+        renderOverlays();
+      });
+    });
+  });
+
+  opacitySlider.addEventListener("input", () => {
+    state.opacity = Number(opacitySlider.value);
+    opacityValue.textContent = state.opacity + "%";
+    renderOverlays();
+  });
+
+  colorSegmented.querySelectorAll("button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      colorSegmented.querySelectorAll("button").forEach(b => b.classList.remove("on"));
+      btn.classList.add("on");
+      state.lineColor = btn.dataset.color;
+      renderOverlays();
+    });
+  });
+
+  sidebarToggle.addEventListener("click", () => {
+    sidebar.classList.toggle("expanded");
+  });
+
+  /* ---------- Export ---------- */
+
+  exportBtn.addEventListener("click", () => {
+    if (!state.image) return;
+    const w = state.image.naturalWidth;
+    const h = state.image.naturalHeight;
+    const out = document.createElement("canvas");
+    out.width = w;
+    out.height = h;
+    const ctx = out.getContext("2d");
+    ctx.drawImage(state.image, 0, 0, w, h);
+    paintOverlays(ctx, w, h);
+
+    out.toBlob(blob => {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "composition-overlay.png";
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }, "image/png");
+  });
+})();
+</script>
+</body>
+</html>
